@@ -76,6 +76,90 @@ Every flagged response is recorded as a policy violation in Anypoint Monitoring 
 | Publish fails: `assetTypes/<i> must be equal to one of the allowed values` | Exchange spells A2A v1 as `a2a_v1` (not `a2av1`). |
 | `make build` fails in `gcl-gen` | Install `cargo-anypoint@1.10.0` (`make setup`). |
 
+## Examples
+
+All examples go through the demo agent instance: `G=https://agent-network-ingress-gw-ky9yvn.aqopru.usa-e1.cloudhub.io/quality-demo`. Replace it with your own instance URL; any A2A agent or OpenAI-compatible LLM API behind the policy behaves the same way.
+
+### 1. A clean answer passes (with `reportAll: true`)
+
+```bash
+curl -s $G/quality-demo-agent/jsonrpc -H 'content-type: application/json' -H 'a2a-version: 1.0' -d '{
+  "jsonrpc":"2.0","id":1,"method":"SendMessage",
+  "params":{"message":{"messageId":"m1","role":"ROLE_USER",
+    "parts":[{"text":"Give me three tips for writing a clear API specification."}]}}}'
+```
+
+```json
+"metadata": { "x_output_quality": {
+  "flagged": [], "action": "monitor", "source": "llm", "judgeMs": 1350,
+  "scores": { "hallucination": 0.0, "toxicity": 0.0, "bias": 0.0, "anomaly": 0.0 }, "reasons": [] } }
+```
+
+### 2. A hallucination is annotated (delivered with a warning)
+
+Question *"Who invented the telephone?"*, agent answers *"…Thomas Edison in 1921 at MIT…"*:
+
+```json
+"artifacts": [{ "parts": [{ "text": "The telephone was invented by Thomas Edison in 1921 at MIT. …" }] }],
+"metadata": { "x_output_quality": {
+  "flagged": ["hallucination"], "action": "annotate", "source": "llm", "judgeMs": 1629,
+  "scores": { "hallucination": 1.0, "toxicity": 0.0, "bias": 0.0, "anomaly": 0.2 },
+  "reasons": ["hallucination:llm(It falsely attributes the telephone to Thomas Edison with incorrect date, place, and fabricated study/DOI details.)"] } }
+```
+
+### 3. A toxic answer is blocked (text withheld)
+
+```json
+"status": { "state": "TASK_STATE_COMPLETED" },
+"artifacts": [{ "parts": [{ "text": "This response was withheld because it did not meet output quality requirements." }] }],
+"metadata": { "x_output_quality": {
+  "flagged": ["toxicity", "anomaly"], "action": "block", "source": "llm", "judgeMs": 1872,
+  "reasons": ["toxicity:llm(It directly insults and demeans the user…)", "anomaly:llm(It does not answer the user's request…)"] } }
+```
+
+### 4. Context matters: a quoted insult in a refusal passes
+
+*"Telling someone to "kill yourself" is harassment and is never okay…"* → `flagged: []`, `source: "llm"`. The word lists alone would block this (`toxicity:threat(kill yourself)`); the LLM judge reads it as a refusal.
+
+### 5. User feedback
+
+```bash
+curl -s -X POST $G/quality-feedback -H 'content-type: application/json' \
+  -d '{"rating":"negative","responseId":"<task id>","category":"hallucination"}'
+# 202 {"status":"recorded","windowSamples":3,"windowNegativeRate":0.67}
+```
+
+Once ≥ `feedbackMinSamples` ratings in the window are ≥ `feedbackNegativeRateThreshold` negative, every response carries `anomaly:feedback_negative_rate(rate=0.67,samples=3)`.
+
+### 6. LLM APIs (OpenAI Chat Completions)
+
+The same policy on an LLM instance puts the report at the top level, and a blocked completion is rewritten in the format OpenAI clients already handle:
+
+```json
+{ "choices": [{ "message": { "role": "assistant",
+    "content": "This response was withheld because it did not meet output quality requirements." },
+    "finish_reason": "content_filter" }],
+  "x_output_quality": { "flagged": ["toxicity"], "action": "block", "source": "llm", "…": "…" } }
+```
+
+## How-to
+
+| I want to… | Do this |
+|---|---|
+| **Start safely in production** | Leave every `*Action` on `monitor` (the default) for a week, review the `flagged …` gateway log lines and policy violations, then move trusted categories to `annotate` / `block`. |
+| **Use a different judge provider** | Set `judgeService` to any OpenAI-compatible base URL — Azure OpenAI, an Omni Gateway LLM proxy, vLLM, Ollama — plus `judgePath`, `judgeModel`, `judgeApiKey`. Set `judgeJsonMode: false` if the server rejects `response_format`. |
+| **Point the judge at an LLM proxy that also runs this policy** | Nothing extra: the policy marks its own judge calls with a configuration-derived guard header and skips judging them (no judge-of-the-judge loop). |
+| **Cut latency or cost** | `judgeMode: onSuspicion` — the judge is only called when the word lists already score ≥ `judgeSuspicionScore` (0.3); clean traffic costs < 1 ms. Or use a smaller `judgeModel`. |
+| **Run without any outbound calls** | Leave `judgeService` empty: word lists + structural signals only (`source: heuristic`). |
+| **Add company rules** | `judgeInstructions: "Never recommend competitor products. Never give medical dosage advice."` — violations are scored under the closest category (or `anomaly`). |
+| **Keep user data away from the judge** | `judgeContextChars: 0` sends only the answer, not the conversation. |
+| **Tune sensitivity** | Raise/lower `hallucinationThreshold`, `toxicityThreshold`, `biasThreshold`, `anomalyThreshold` (0–1). Add domain terms with `toxicityTerms` / `biasGroupTerms` (heuristic fallback only). |
+| **Show scores for every answer** | `reportAll: true` (the demo UI relies on it). |
+| **Disable feedback** | `feedbackPath: ""`. Put authentication (client-ID / JWT) in front of the instance if feedback must be trusted. |
+| **Check the judge is really running** | Reports should say `source: "llm"` with a `judgeMs` value. `heuristic` = no `judgeService` saved; `heuristic_fallback` = judge failed (see Troubleshooting). |
+| **Try it without Anypoint** | `PLAYGROUND_PORT=8082 make run` with the demo agent running locally — see [Local playground](#local-playground). |
+| **Run the full demo** | Follow [`output-quality-demo-agent/DEMO.md`](output-quality-demo-agent/DEMO.md) (10-step script, deep links `?autorun=<mode>`). |
+
 ## Build, test, release
 
 ```bash
@@ -90,7 +174,7 @@ make release                # publish definition + implementation to Exchange (b
 
 `make run` starts Flex Gateway 1.13.0 in Docker with the policy and the config in `playground/config/api.yaml`. `PLAYGROUND_PORT=8082 make run` exposes it on 8082 (use this when the demo agent runs locally on 8081).
 
-The upstream in `api.yaml` is currently the **local demo agent** (`http://host.docker.internal:8081`, see `../output-quality-demo-agent/DEMO.md`). Two judge options are in the file:
+The upstream in `api.yaml` is currently the **local demo agent** (`http://host.docker.internal:8081`, see [`output-quality-demo-agent/DEMO.md`](output-quality-demo-agent/DEMO.md)). Two judge options are in the file:
 
 - **Stand-in judge** (no key): `judgeService: http://backend:8080`, `judgePath: /judge/v1/chat/completions` — keyword rules in `playground/mock-llm/server.py`; reasons end with `[context received]`. Not an LLM.
 - **Real OpenAI judge**: `judgeService: https://api.openai.com`, `judgePath: /v1/chat/completions`, `judgeModel`, `judgeApiKey`. **Never commit `api.yaml` with a real key.**
