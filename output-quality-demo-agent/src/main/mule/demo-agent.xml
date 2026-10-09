@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:a2a="http://www.mulesoft.org/schema/mule/a2a"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/a2a http://www.mulesoft.org/schema/mule/a2a/current/mule-a2a.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <configuration-properties file="config.yaml" doc:name="Configuration properties"/>
+
+    <http:listener-config name="api-listener" doc:name="HTTP listener">
+        <http:listener-connection host="0.0.0.0" port="${http.port}"/>
+    </http:listener-config>
+
+    <http:request-config name="openai-request" responseTimeout="60000" doc:name="OpenAI">
+        <http:request-connection host="${openai.host}" port="443" protocol="HTTPS"/>
+    </http:request-config>
+
+    <!-- A2A 1.0 server. Card: {agentPath}/.well-known/agent-card.json; JSON-RPC: {agentPath}/jsonrpc.
+         The card's interface URL must point at the gateway, which is where clients connect. -->
+    <a2a:server-config name="A2A_Server" doc:name="A2A Server">
+        <a2a:connection listenerConfig="api-listener" agentPath="${agent.path}">
+            <a2a:interfaces>
+                <a2a:interface protocol="JSONRPC" path="/jsonrpc"/>
+            </a2a:interfaces>
+        </a2a:connection>
+        <a2a:agent-card>
+            <a2a:json><![CDATA[{
+  "name": "Output Quality Demo Agent",
+  "description": "Answers questions with a real model, or with scripted misbehaving answers (biased, toxic, hallucinated, off-topic, prompt leak, looping) to demonstrate the Output Quality & Anomaly Detection policy.",
+  "version": "1.1.0",
+  "protocolVersion": "1.0",
+  "supportedInterfaces": [
+    { "protocolBinding": "JSONRPC", "url": "${agent.publicUrl}${agent.path}/jsonrpc", "protocolVersion": "1.0" }
+  ],
+  "capabilities": { "streaming": false, "pushNotifications": false, "extendedAgentCard": false },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain"],
+  "skills": [
+    {
+      "id": "answer-question",
+      "name": "Answer_Question",
+      "description": "Answers a general question. Set message.metadata.demo_mode to bias, toxic, hallucinate, quoted, offtopic, leak, loop or empty for a scripted answer, or to a mode with metadata.answer_source=model for a real model prompted to misbehave.",
+      "tags": ["demo", "output-quality", "llm"]
+    }
+  ]
+}]]></a2a:json>
+        </a2a:agent-card>
+    </a2a:server-config>
+
+    <!-- Demo UI, same origin as the agent so the browser talks to it through the gateway. -->
+    <flow name="ui-flow">
+        <http:listener config-ref="api-listener" path="/" allowedMethods="GET" doc:name="GET /">
+            <http:response>
+                <http:headers>#[{'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'}]</http:headers>
+            </http:response>
+        </http:listener>
+        <ee:transform doc:name="Load index.html">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output text/plain
+---
+readUrl("classpath://web/index.html", "text/plain")]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
+    <flow name="health-flow">
+        <http:listener config-ref="api-listener" path="/health" allowedMethods="GET" doc:name="GET /health"/>
+        <ee:transform doc:name="Status">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ status: "UP", model: p('openai.model'), openaiConfigured: not isEmpty(p('openai.apiKey')), agentPath: p('agent.path') }]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
+    <!-- One task per message: pick a scripted or real-model answer, publish it as the task's
+         artifact, then complete the task (the connector returns the Task to the caller). -->
+    <flow name="a2a-task-flow">
+        <a2a:task-listener doc:name="Task Listener" config-ref="A2A_Server"/>
+        <ee:transform doc:name="Read request">
+            <ee:variables>
+                <ee:set-variable variableName="taskId"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.taskId]]></ee:set-variable>
+                <ee:set-variable variableName="contextId"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.contextId]]></ee:set-variable>
+                <ee:set-variable variableName="question"><![CDATA[%dw 2.0
+output application/java
+---
+((payload.message.parts default []) filter ($.text != null) map $.text) joinBy "\n"]]></ee:set-variable>
+                <ee:set-variable variableName="mode"><![CDATA[%dw 2.0
+output application/java
+---
+lower((payload.message.metadata.demo_mode default "normal") as String)]]></ee:set-variable>
+                <ee:set-variable variableName="source"><![CDATA[%dw 2.0
+output application/java
+---
+if (lower((payload.message.metadata.answer_source default "scripted") as String) == "model") "model" else "scripted"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" doc:name="Log" message="#['task=' ++ (vars.taskId default '') ++ ' demo_mode=' ++ vars.mode ++ ' answer_source=' ++ vars.source]"/>
+        <choice doc:name="Answer source">
+            <when expression="#[vars.mode != 'normal' and vars.source == 'scripted']">
+                <ee:transform doc:name="Scripted answer">
+                    <ee:variables>
+                        <ee:set-variable variableName="answer"><![CDATA[%dw 2.0
+import * from dw::demo_modes
+output application/java
+---
+if (isKnown(vars.mode)) scripted(vars.mode) else "Unknown demo mode '" ++ vars.mode ++ "'."]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </when>
+            <when expression="#[isEmpty(p('openai.apiKey'))]">
+                <set-variable variableName="answer" doc:name="Key not configured"
+                              value="Real-model answers need the openai.apiKey secure property. Pick a scripted mode, or set the key in Runtime Manager."/>
+            </when>
+            <otherwise>
+                <ee:transform doc:name="Build OpenAI request">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+import * from dw::demo_modes
+output application/json
+---
+modelRequest(p('openai.model'), vars.mode, vars.question)]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+                <http:request method="POST" config-ref="openai-request" path="/v1/chat/completions" doc:name="OpenAI chat completions">
+                    <http:headers><![CDATA[#[{
+  'authorization': 'Bearer ' ++ p('openai.apiKey'),
+  'content-type': 'application/json'
+}]]]></http:headers>
+                </http:request>
+                <set-variable variableName="answer" doc:name="Model answer"
+                              value="#[output application/java --- (payload.choices[0].message.content default '') as String]"/>
+            </otherwise>
+        </choice>
+        <a2a:update-task-artifact doc:name="Answer" config-ref="A2A_Server">
+            <a2a:artifact-content><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+  artifactUpdate: {
+    taskId: vars.taskId,
+    contextId: vars.contextId,
+    artifact: { artifactId: "answer-" ++ vars.taskId, name: "answer", parts: [{ text: vars.answer }] }
+  }
+}]]]></a2a:artifact-content>
+        </a2a:update-task-artifact>
+        <a2a:update-task-status doc:name="Completed" config-ref="A2A_Server">
+            <a2a:status-content><![CDATA[#[%dw 2.0
+output application/json
+---
+// The connector requires a non-empty status message; the answer itself is the artifact.
+{ statusUpdate: { taskId: vars.taskId, contextId: vars.contextId, status: {
+    state: "TASK_STATE_COMPLETED",
+    message: { messageId: uuid(), role: "ROLE_AGENT", parts: [{ text: "Answer ready." }] }
+} } }]]]></a2a:status-content>
+        </a2a:update-task-status>
+        <error-handler>
+            <on-error-continue type="ANY" doc:name="Fail the task">
+                <logger level="WARN" doc:name="Log error" message="#['Task failed: ' ++ (error.errorType.identifier default '') ++ ' ' ++ (error.description default '')]"/>
+                <a2a:update-task-status doc:name="Failed" config-ref="A2A_Server">
+                    <a2a:status-content><![CDATA[#[%dw 2.0
+output application/json
+---
+{ statusUpdate: { taskId: vars.taskId, contextId: vars.contextId, status: {
+    state: "TASK_STATE_FAILED",
+    message: { messageId: uuid(), role: "ROLE_AGENT", parts: [{ text: "The agent could not answer: " ++ (error.errorType.identifier default "UNKNOWN") }] }
+} } }]]]></a2a:status-content>
+                </a2a:update-task-status>
+            </on-error-continue>
+        </error-handler>
+    </flow>
+</mule>

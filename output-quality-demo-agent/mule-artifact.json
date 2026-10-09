@@ -1,0 +1,6 @@
+{
+  "name": "output-quality-demo-agent",
+  "minMuleVersion": "4.11.0",
+  "javaSpecificationVersions": ["17"],
+  "secureProperties": ["openai.apiKey"]
+}

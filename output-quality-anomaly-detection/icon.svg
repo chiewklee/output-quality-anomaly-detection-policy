@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Output Quality and Anomaly Detection">
+  <rect width="128" height="128" rx="24" fill="#032D60"/>
+  <!-- shield -->
+  <path d="M64 18 L100 30 V62 C100 86 84 102 64 110 C44 102 28 86 28 62 V30 Z" fill="#0176D3"/>
+  <!-- speech bubble = model output -->
+  <rect x="42" y="44" width="44" height="30" rx="7" fill="#FFFFFF"/>
+  <path d="M52 74 L52 84 L62 74 Z" fill="#FFFFFF"/>
+  <!-- check mark = quality verdict -->
+  <path d="M51 59 L60 67 L77 51" fill="none" stroke="#2E844A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- accent -->
+  <circle cx="92" cy="92" r="11" fill="#1B96FF" stroke="#032D60" stroke-width="3"/>
+  <path d="M92 86 V93 M92 97 V98" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+</svg>

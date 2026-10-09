@@ -1,0 +1,171 @@
+apiVersion: gateway.mulesoft.com/v1alpha1
+kind: Extension
+metadata:
+  labels:
+    title: Output Quality & Anomaly Detection
+    category: Quality of Service
+    description: >-
+      Detects hallucination, bias, toxicity and abnormal outputs from LLMs and
+      A2A agents using an LLM judge with word-list fallback, rolling baselines
+      and user feedback signals.
+    metadata/capabilities/assetTypes: llm,http,a2a,a2a_v1
+    metadata/capabilities/injectionPoint: outbound
+    metadata/interfaceScope: api,resource
+spec:
+  extends:
+    - name: extension-definition
+      namespace: default
+  properties:
+    hallucinationThreshold:
+      type: number
+      default: 0.6
+      minimum: 0
+      maximum: 1
+      description: Hallucination-risk score (0-1) at or above which a response is flagged.
+    hallucinationAction:
+      type: string
+      enum: [monitor, annotate, block]
+      default: monitor
+      description: What to do with a response flagged for hallucination risk.
+    toxicityThreshold:
+      type: number
+      default: 0.5
+      minimum: 0
+      maximum: 1
+      description: Toxicity score (0-1) at or above which a response is flagged.
+    toxicityAction:
+      type: string
+      enum: [monitor, annotate, block]
+      default: monitor
+      description: What to do with a response flagged for toxicity.
+    biasThreshold:
+      type: number
+      default: 0.5
+      minimum: 0
+      maximum: 1
+      description: Bias score (0-1) at or above which a response is flagged.
+    biasAction:
+      type: string
+      enum: [monitor, annotate, block]
+      default: monitor
+      description: What to do with a response flagged for bias.
+    anomalyThreshold:
+      type: number
+      default: 0.7
+      minimum: 0
+      maximum: 1
+      description: Anomaly score (0-1) at or above which a response is flagged as abnormal.
+    anomalyAction:
+      type: string
+      enum: [monitor, annotate, block]
+      default: monitor
+      description: What to do with a response flagged as abnormal.
+    toxicityTerms:
+      type: array
+      items:
+        type: string
+      default: []
+      description: Extra case-insensitive terms or phrases that count as toxic, added to the built-in list.
+    biasGroupTerms:
+      type: array
+      items:
+        type: string
+      default: []
+      description: Extra group nouns (e.g. a nationality) checked for sweeping generalisations, added to the built-in list.
+    lowConfidenceLogprob:
+      type: number
+      default: -1.0
+      maximum: 0
+      description: Mean token log-probability below which a response counts as low confidence (needs logprobs in the response).
+    maxInspectedBytes:
+      type: integer
+      default: 262144
+      minimum: 1024
+      maximum: 10485760
+      description: Maximum response bytes inspected. Larger responses are passed through and reported as uninspected.
+    baselineWarmupSamples:
+      type: integer
+      default: 30
+      minimum: 1
+      description: Responses observed before the rolling length baseline is used for anomaly scoring.
+    lengthZScoreThreshold:
+      type: number
+      default: 3.0
+      minimum: 1
+      description: Absolute z-score of response length against the rolling baseline that counts as fully anomalous.
+    feedbackPath:
+      type: string
+      default: /quality-feedback
+      description: Path that accepts POSTed feedback signals and is answered by the gateway. Empty disables feedback.
+    feedbackWindowSeconds:
+      type: integer
+      default: 300
+      minimum: 10
+      description: Length of the window used to compute the negative-feedback rate.
+    feedbackMinSamples:
+      type: integer
+      default: 10
+      minimum: 1
+      description: Feedback signals needed in the window before the negative-feedback rate can raise an anomaly.
+    feedbackNegativeRateThreshold:
+      type: number
+      default: 0.3
+      minimum: 0
+      maximum: 1
+      description: Negative-feedback rate at or above which every response is reported as part of a feedback anomaly.
+    judgeMode:
+      type: string
+      enum: ["off", onSuspicion, always]
+      default: always
+      description: When to call the LLM judge. Without judgeService the word-list heuristics are used alone.
+    judgeService:
+      type: string
+      format: service
+      description: LLM judge base URL, e.g. https://api.openai.com (any OpenAI-compatible chat completions API). Empty uses word-list heuristics only.
+    judgePath:
+      type: string
+      default: /v1/chat/completions
+      description: Chat completions path on the judge service.
+    judgeModel:
+      type: string
+      default: gpt-5.4-mini
+      description: Model the judge uses, e.g. gpt-5.4-mini or gpt-4.1-mini.
+    judgeApiKey:
+      type: string
+      description: API key for the judge service (sent as a Bearer token). Stored as a secret.
+      "@context":
+        "@characteristics":
+          - security:sensitive
+    judgeInstructions:
+      type: string
+      description: Extra operator rules for the judge, e.g. "Never give medical dosage advice." Violations score under the closest category.
+    judgeContextChars:
+      type: integer
+      default: 8000
+      minimum: 0
+      maximum: 100000
+      description: Characters of the request conversation sent to the judge for grounding. 0 sends only the response.
+    judgeJsonMode:
+      type: boolean
+      default: true
+      description: Send response_format json_object. Disable for servers that reject it.
+    judgeSuspicionScore:
+      type: number
+      default: 0.3
+      minimum: 0
+      maximum: 1
+      description: In onSuspicion mode, the highest heuristic score that triggers a judge call.
+    judgeTimeoutMs:
+      type: integer
+      default: 5000
+      minimum: 100
+      maximum: 30000
+      description: Judge call timeout. On timeout or error the word-list heuristics are used instead.
+    reportAll:
+      type: boolean
+      default: false
+      description: Add the x_output_quality report to every inspected JSON response, not only flagged ones (useful for demos and tuning).
+    stripAcceptEncoding:
+      type: boolean
+      default: true
+      description: Remove Accept-Encoding from requests so upstream responses arrive uncompressed and can be inspected.

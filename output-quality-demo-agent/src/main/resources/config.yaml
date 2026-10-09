@@ -1,0 +1,12 @@
+http:
+  port: "8081"
+agent:
+  path: "/quality-demo-agent"
+  # Public base URL clients use (the gateway). Override per environment.
+  publicUrl: "http://localhost:8082"
+openai:
+  host: "api.openai.com"
+  model: "gpt-5.4-mini"
+  # openai.apiKey is deliberately NOT defined here: a value in this file shadows -D system
+  # properties locally. Provide it as a protected property in Runtime Manager (CloudHub 2.0)
+  # or with -M-Dopenai.apiKey=... on the local runtime. Never commit a real key.

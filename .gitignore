@@ -1,0 +1,23 @@
+# Build output
+target/
+**/definition/target/
+*.jar
+
+# PDK / Flex Gateway local artifacts (registration files hold TLS keys)
+.pdk
+registration.yaml
+certificate.yaml
+**/playground/config/custom-policies/*
+!**/playground/config/custom-policies/note.txt
+
+# Mule / IDE
+.mule/
+.tooling-project/
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# Secrets
+.env
+*.secret

@@ -1,0 +1,33 @@
+# Copyright 2026 Salesforce, Inc. All rights reserved.
+---
+apiVersion: gateway.mulesoft.com/v1alpha1
+kind: ApiInstance
+metadata:
+  name: ingress-http
+spec:
+  address: http://0.0.0.0:8081
+  services:
+    upstream:
+      address: http://host.docker.internal:8081
+      routes:
+        - config:
+            destinationPath: /
+  policies:
+    - policyRef:
+        name: output-quality-anomaly-detection-flex-v1-1 # This value will be overriden during 'make run' execution
+        namespace: default
+      config:
+        toxicityAction: block
+        biasAction: annotate
+        hallucinationAction: annotate
+        anomalyAction: annotate
+        feedbackMinSamples: 3
+        reportAll: true
+        # Stand-in judge on the mock backend (keyword rules, no key needed).
+        judgeService: http://backend:8080
+        judgePath: /judge/v1/chat/completions
+        # Real OpenAI judge: replace the two lines above with the three below.
+        # Never commit a real key.
+        # judgeService: https://api.openai.com
+        # judgeModel: gpt-5.4
+        # judgeApiKey: <your OpenAI API key>
