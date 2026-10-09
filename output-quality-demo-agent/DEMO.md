@@ -116,6 +116,17 @@ anypoint-cli-v4 runtime-mgr application modify 48b0a0d0-6b65-4833-b3f0-394fd3455
 
 `modify` cannot change the artifact **id**. To switch assets, delete the app and run `runtime-mgr application deploy output-quality-demo-agent 929756ed-619c-4974-9f92-ffb172c08b4f 4.12.3 output-quality-demo-agent-app --environment Sandbox --javaVersion 17 --replicas 1 --replicaSize 0.1 --property …`. A CLI deploy creates **no public endpoint** (internal URL only). Re-check the protected `openai.apiKey` after a redeploy.
 
+### Creating the agent instance by API (scripted alternative)
+
+This demo's instance (21226057) was created in the API Manager UI. MuleSoft's Developer Hub skill [`secure-agent`](https://dev-portal.mulesoft.com/skills/secure-agent/SKILL.md) documents the same steps as API calls, useful for repeatable setups:
+
+1. **Create the instance** — API Manager `createApiInstance` with the agent's Exchange coordinates (`groupId`, `assetId` `output-quality-demo-agent`, `assetVersion`), `technology: flexGateway`, `endpoint.proxyUri: http://0.0.0.0:<port>/`, and `endpoint.uri` = the agent's internal URL. **`endpoint.isCloudHub` must be `null`, not `false`** (false fails validation).
+2. **Deploy it to the gateway** — Proxies xAPI `createProxyDeployment` with the instance id, the `agent-network-ingress-gw` target id and gateway version, using the **flat top-level fields** (not the nested `target` object).
+3. **List agent instances** — API Manager instances filtered with `family=agentic`, to get the id.
+4. **Apply the policy** — the skill covers inbound policies only; this policy is **outbound**, so apply it in API Manager → instance → **Outbound policies** (as done for this demo), or check the API Manager API for upstream policy binding.
+
+Follow the skill for exact request shapes and authentication (see the portal's [AGENTS.md](https://dev-portal.mulesoft.com/AGENTS.md)).
+
 ### Publishing the agent asset (type `agent`)
 
 The Anypoint CLI lists no `agent` type, but this works and matches network-created agents such as `trimble-account-agent`:
