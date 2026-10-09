@@ -30,7 +30,7 @@ caller ──► agent-network-ingress-gw (Omni Gateway, clee-inc-ps)
 | Tests | 102 unit + pdk-unit tests, Docker integration test, local playground, live CloudHub 2.0 run |
 | Demo agent | Exchange `output-quality-demo-agent` 1.1.0 (type agent) + `output-quality-demo-agent-app` 1.1.0 (app); CloudHub 2.0 app running, internal endpoint only |
 | Gateway instance | `21226057` on `agent-network-ingress-gw`, outbound policy applied with OpenAI judge |
-| P4A submission | not submitted yet |
+| P4A submission | repo public; wizard content ready in [`P4A_SUBMISSION.md`](P4A_SUBMISSION.md) |
 
 ## Lessons worth keeping
 
