@@ -40,7 +40,7 @@ Agents increasingly answer users directly. Guardrails on the *prompt* don't tell
 - **User feedback** — a gateway-served `POST /quality-feedback` endpoint; a spike in negative ratings raises an anomaly across all traffic.
 
 ### What it does with a verdict
-Per category: **monitor** (log + Anypoint policy violation), **annotate** (deliver with a quality report attached) or **block** (withhold the text). Start with everything on monitor, then tighten category by category.
+Per category: **monitor** (gateway log + quality report), **annotate** (deliver with a quality report attached) or **block** (withhold the text). Start with everything on monitor, then tighten category by category.
 
 ### Works with
 - **A2A agents** — Legacy (`message/send`) and v1.0 (`SendMessage`), JSON-RPC and HTTP+JSON, including streaming. The report goes into the task's `metadata.x_output_quality`; blocked tasks keep their ids and state.

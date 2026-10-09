@@ -25,6 +25,26 @@ caller ──► agent-network-ingress-gw (Omni Gateway, clee-inc-ps)
 | Word-list heuristics | threats, insults, profanity, group generalisations, unsupported citations, hedging | fallback when no judge is set or it fails |
 | Structural signals | low token confidence, empty / truncated / looping / garbled output, failed A2A tasks, length outliers, spikes in negative user feedback | always, combined with either of the above |
 
+## In plain words: how it checks
+
+Think of the policy as a checker that reads every answer before the user sees it. It has two ways of checking.
+
+**1. The smart checker (the LLM judge)** — another AI reads the answer and actually *understands* it. It can tell that "Edison invented the telephone" is wrong, that an answer about bananas didn't answer a password question, or that quoting an insult in order to condemn it is fine.
+
+**2. The backup checklist (the "heuristic", or word list)** — when the smart checker isn't available, the policy falls back to a simple checklist of red-flag words and phrases ("idiot", "kill yourself", "studies show"…). It is fast and never goes down, but it only spots *words*, not *meaning*, so it can:
+- **overreact** — it blocks a kind answer because it contains "kill yourself" in quotes;
+- **miss things** — an off-topic or made-up answer with no bad words gets through.
+
+The report's **`source`** label tells you which checker did the work:
+
+| `source` | Meaning |
+|---|---|
+| `llm` | The smart checker read it — what you want. |
+| `heuristic` | Only the checklist ran, because no smart checker is set up (`judgeService` is empty). |
+| `heuristic_fallback` | The smart checker is set up but didn't answer this time (timeout, error, bad key), so the checklist covered for it. The answer is never held back while this happens. |
+
+On top of either checker, a few **structural checks** always run (empty, cut-off or looping answers, failed agent tasks) along with **user feedback** (👍/👎). It's like a spell-checker versus a human editor: the spell-checker is always there and catches obvious mistakes, but only the editor knows whether what you wrote makes sense.
+
 | | |
 |---|---|
 | Exchange assets | `output-quality-anomaly-detection` (definition) + `output-quality-anomaly-detection-flex` (implementation), group `fa76c43c-f6d0-41fd-bdcd-214ccae74d41` |
@@ -57,7 +77,7 @@ caller ──► agent-network-ingress-gw (Omni Gateway, clee-inc-ps)
 | `reportAll` | `true` | Clean answers also carry scores (for the demo UI). |
 | `feedbackMinSamples` | `3` | So the feedback anomaly can be shown live. |
 
-Every flagged response is recorded as a policy violation in Anypoint Monitoring and logged by the gateway.
+Every flagged response carries the `x_output_quality` report and is logged by the gateway (`flagged response_id=… categories=… action=…`). The policy also raises a PDK policy violation, but **as an outbound policy it does not currently appear in Anypoint Monitoring's policy-violation counts** (verified on managed Omni Gateway 1.13.1: 52 requests, 0 violations shown) — use the gateway logs or the report for alerting.
 
 ### What callers see
 
@@ -146,7 +166,7 @@ The same policy on an LLM instance puts the report at the top level, and a block
 
 | I want to… | Do this |
 |---|---|
-| **Start safely in production** | Leave every `*Action` on `monitor` (the default) for a week, review the `flagged …` gateway log lines and policy violations, then move trusted categories to `annotate` / `block`. |
+| **Start safely in production** | Leave every `*Action` on `monitor` (the default) for a week, review the `flagged …` gateway log lines and the reports, then move trusted categories to `annotate` / `block`. |
 | **Use a different judge provider** | Set `judgeService` to any OpenAI-compatible base URL — Azure OpenAI, an Omni Gateway LLM proxy, vLLM, Ollama — plus `judgePath`, `judgeModel`, `judgeApiKey`. Set `judgeJsonMode: false` if the server rejects `response_format`. |
 | **Point the judge at an LLM proxy that also runs this policy** | Nothing extra: the policy marks its own judge calls with a configuration-derived guard header and skips judging them (no judge-of-the-judge loop). |
 | **Cut latency or cost** | `judgeMode: onSuspicion` — the judge is only called when the word lists already score ≥ `judgeSuspicionScore` (0.3); clean traffic costs < 1 ms. Or use a smaller `judgeModel`. |
