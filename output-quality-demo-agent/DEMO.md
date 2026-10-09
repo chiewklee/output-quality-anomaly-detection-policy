@@ -90,7 +90,7 @@ cp target/output-quality-demo-agent-1.1.0-mule-application.jar $R/apps/output-qu
 $R/bin/mule stop; $R/bin/mule start -M-Dmule.deploy.applications=output-quality-demo-agent   # add -M-Dopenai.apiKey=… for Normal mode
 
 # 2. Flex Gateway playground in front of it on port 8082
-cd ../output-quality-anomaly-detection && PLAYGROUND_PORT=8082 make run
+cd .. && PLAYGROUND_PORT=8082 make run
 
 # 3. Open http://localhost:8082/?autorun=bias
 ```
@@ -146,5 +146,5 @@ anypoint-cli-v4 exchange asset upload fa76c43c-f6d0-41fd-bdcd-214ccae74d41/outpu
 ## Security & cleanup
 
 - Rotate the OpenAI key used for the demo (it was shared in chat). Update the app's protected property and the policy's `judgeApiKey`.
-- `../output-quality-anomaly-detection/playground/config/api.yaml` may contain a real key — restore the stand-in judge lines before committing or sharing.
+- `../playground/config/api.yaml` may contain a real key — restore the stand-in judge lines before committing or sharing.
 - To tear down: remove instance 21226057 (API Manager), delete the CloudHub app, then the Exchange assets (MCP `create_and_manage_assets` delete).

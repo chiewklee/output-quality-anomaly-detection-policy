@@ -10,9 +10,9 @@ Start at https://www.p4a.ai/dashboard/policies → **Submit Policy**.
 
 | Field | Value |
 |---|---|
-| Project type | **Unified-model** (single crate, `.project.yaml` at the policy root) |
+| Project type | **Unified-model** (single crate, `.project.yaml` at the repository root) |
 | Repository URL | `https://github.com/chiewklee/output-quality-anomaly-detection-policy` |
-| Policy subdirectory | `output-quality-anomaly-detection/` (if the wizard asks for a path; otherwise use `https://github.com/chiewklee/output-quality-anomaly-detection-policy/tree/main/output-quality-anomaly-detection`) |
+| Project root | repository root (the policy is at the top level) |
 | Branch / tag / commit | `main` — or pin the commit SHA shown on GitHub for this submission |
 
 Expected validation banner: **Valid policy (PDK 1.10.0)**.
@@ -73,7 +73,7 @@ All fields are optional; defaults shown.
 | `toxicityTerms` / `biasGroupTerms` | `[]` | Extra terms for the heuristic fallback. |
 | `lowConfidenceLogprob`, `maxInspectedBytes`, `baselineWarmupSamples`, `lengthZScoreThreshold`, `judgePath`, `judgeJsonMode`, `judgeSuspicionScore`, `stripAcceptEncoding` | see spec | Advanced tuning. |
 
-Full reference: https://github.com/chiewklee/output-quality-anomaly-detection-policy/blob/main/output-quality-anomaly-detection/docs/spec.md
+Full reference: https://github.com/chiewklee/output-quality-anomaly-detection-policy/blob/main/docs/spec.md
 ```
 
 ### Examples
@@ -147,7 +147,7 @@ A runnable A2A demo agent with scripted misbehaviour modes and a UI is in the re
 | Field | Value |
 |---|---|
 | Examples link | `https://github.com/chiewklee/output-quality-anomaly-detection-policy/tree/main/output-quality-demo-agent` |
-| Icon | `output-quality-anomaly-detection/icon.svg` (picked up automatically) |
+| Icon | `icon.svg` at the repository root (picked up automatically) |
 | Video | — |
 
 ## 7. Review → **Submit for Review**

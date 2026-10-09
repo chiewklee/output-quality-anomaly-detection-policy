@@ -1,6 +1,6 @@
 # Output Quality Demo Agent
 
-A Mule 4 **A2A 1.0 agent** (MuleSoft A2A Connector 2.0.0) built to demonstrate the [Output Quality & Anomaly Detection policy](../output-quality-anomaly-detection/README.md). It answers with a real model (OpenAI `gpt-5.4-mini`) or, on request, with scripted misbehaving answers — biased, toxic, hallucinated, off-topic, prompt-leaking, looping — so the policy has something to catch. It also serves the demo UI.
+A Mule 4 **A2A 1.0 agent** (MuleSoft A2A Connector 2.0.0) built to demonstrate the [Output Quality & Anomaly Detection policy](../README.md). It answers with a real model (OpenAI `gpt-5.4-mini`) or, on request, with scripted misbehaving answers — biased, toxic, hallucinated, off-topic, prompt-leaking, looping — so the policy has something to catch. It also serves the demo UI.
 
 - Runbook, deployed resources, demo script and troubleshooting: **[DEMO.md](DEMO.md)**
 - Runtime: Mule 4.12.3 (CloudHub 2.0, Edge channel), `minMuleVersion` 4.11.0, Java 17
