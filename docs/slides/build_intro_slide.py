@@ -115,19 +115,18 @@ def status_row(slide, x, y, color, glyph, label, desc):
     text(slide, x + 0.58, y + 0.26, 3.0, 0.3, desc, size=11, color=TEXT_2)
 
 
-NOTES = """OPENING — AI agents now answer users directly. Most guardrails look at what goes INTO the model (the prompt); very few check what comes OUT. Was the answer true? Fair? On topic? This policy checks every answer on the gateway, before it reaches the user, with no change to the agent.
+NOTES = """TALK TRACK (~45 s)
+AI agents now answer users directly, but most guardrails only check the prompt, not the answer.
+This policy runs on Omni Gateway, between the gateway and the agent, and checks every answer before the user sees it. No change to the agent.
+A separate AI judge scores each answer for hallucination, toxicity, bias and anomaly. If the judge is down, a red-flag word list takes over, and checks for broken output and user thumbs-down always run.
+Per risk, you choose: pass it, annotate it with a warning, or block it.
+In our live run, each verdict took one to two and a half seconds.
+The bad answers you'll see are scripted, but the judge is real. Let's look.
 
-01 WHERE IT RUNS — Omni Gateway, as an outbound policy: between the gateway and the agent, so it sees exactly what the agent sent back. For each reply the gateway asks a separate AI (OpenAI gpt-5.4) to judge it. The agent uses a smaller model, so it's never marking its own homework.
-
-02 HOW IT DECIDES — Three layers. (1) The LLM judge reads the user's question and the answer and scores 0-1 for hallucination, toxicity, bias and anomaly (off-topic, leaked instructions). (2) If the judge is slow or down, a backup checklist of red-flag words takes over; cruder, but traffic never waits. (3) Always-on checks: empty, cut-off or looping answers, failed tasks, and users' thumbs-down; if many users complain, every answer gets flagged.
-
-03 WHAT IT DOES — Your choice per risk: PASS clean answers, ANNOTATE (deliver with a quality report the app can use to warn the user), or BLOCK (withhold the answer). Start by monitoring, tighten one category at a time. Every flag is logged by the gateway and reported in the response.
-
-NUMBERS — Live run on CloudHub 2.0: 1-2.5 s per verdict, 4 risk categories, A2A v0.3 and v1.0 plus OpenAI/Anthropic-style APIs, 102 automated tests.
-
-TRANSITION — Honesty note: the bad answers in the demo are scripted (today's models won't misbehave on cue). The judge is real, and so is every verdict. Let's look.
-
-IF ASKED — Monitoring: request volume and latency yes; flags are in gateway logs and the response report, outbound violation counts aren't in Monitoring yet. LLM traffic: the policy reads OpenAI and Anthropic formats; the live demo uses an A2A agent, the LLM-API path is lab-tested. Latency: ~1-2.5 s with the judge on every answer; near zero for clean traffic with judgeMode onSuspicion."""
+IF ASKED
+- Monitoring: request volume and latency yes; flags are in gateway logs and the response report (outbound violation counts aren't in Monitoring yet).
+- LLM traffic: reads OpenAI and Anthropic formats; today's demo uses an A2A agent, the LLM-API path is lab-tested.
+- Latency: ~1-2.5 s with the judge on every answer; near zero for clean traffic with judgeMode onSuspicion."""
 
 
 def build(path):
