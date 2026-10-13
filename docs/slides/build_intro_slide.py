@@ -119,7 +119,7 @@ NOTES = """TALK TRACK (~45 s)
 AI agents now answer users directly, but most guardrails only check the prompt, not the answer.
 This policy runs on Omni Gateway, between the gateway and the agent, and checks every answer before the user sees it. No change to the agent.
 A separate AI judge scores each answer for hallucination, toxicity, bias and anomaly. If the judge is down, a red-flag word list takes over, and checks for broken output and user thumbs-down always run.
-Per risk, you choose: pass it, annotate it with a warning, or block it.
+Per risk, you choose what happens to a flagged answer: log it, annotate it with a warning, or block it.
 In our live run, each verdict took one to two and a half seconds.
 The bad answers you'll see are scripted, but the judge is real. Let's look.
 
@@ -174,7 +174,7 @@ def build(path):
 
     # 3. What it does
     card(s, 8.84, top, 3.9, h, "03  WHAT IT DOES", "Your choice, per category")
-    status_row(s, 9.09, top + 1.05, OK, "✓", "Pass", "Clean answers flow untouched")
+    status_row(s, 9.09, top + 1.05, OK, "✓", "Pass", "Clean, or flagged and set to monitor")
     status_row(s, 9.09, top + 1.8, WARN, "!", "Annotate", "Delivered with a quality report")
     status_row(s, 9.09, top + 2.55, ERR, "×", "Block", "Answer withheld from the user")
     text(s, 9.09, top + 3.3, 3.45, 0.5,
