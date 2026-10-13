@@ -90,6 +90,8 @@ pub struct Settings {
     pub judge_misconfigured: bool,
     pub strip_accept_encoding: bool,
     pub report_all: bool,
+    /// Demo/debug only: attach the original text of blocked responses to the report.
+    pub include_withheld_text: bool,
 }
 
 impl Settings {
@@ -262,6 +264,7 @@ impl TryFrom<Config> for Settings {
             judge_misconfigured,
             strip_accept_encoding: config.strip_accept_encoding.unwrap_or(true),
             report_all: config.report_all.unwrap_or(false),
+            include_withheld_text: config.include_withheld_text.unwrap_or(false),
         })
     }
 }
@@ -311,6 +314,7 @@ mod tests {
         assert!(!s.may_rewrite());
         assert!(s.strip_accept_encoding);
         assert!(!s.report_all);
+        assert!(!s.include_withheld_text, "withheld text must be opt-in");
         assert!(settings(r#"{"reportAll": true}"#).unwrap().may_rewrite());
     }
 

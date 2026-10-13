@@ -3,7 +3,7 @@
 Category: Quality of Service
 Applies to: llm, http, a2a, a2a_v1
 Injection point: outbound
-Version: 1.2.0
+Version: 1.3.0
 
 Inspects LLM and A2A-agent responses passing through Omni / Flex Gateway, as an **outbound** policy on the gateway-to-upstream leg, and scores each one for four quality risks — **hallucination**, **toxicity**, **bias** and **abnormal output** — using an LLM judge (any OpenAI-compatible chat completions API, e.g. OpenAI `gpt-5.4-mini`) that sees the request conversation and the response, with in-gateway word-list heuristics as the fallback when no judge is configured or it fails, always combined with structural signals the judge cannot observe — token confidence, finish reasons, repetition, a rolling per-replica length baseline and end-user feedback POSTed to a gateway-served endpoint. Each category has its own threshold and action (`monitor`, `annotate`, `block`), so the same policy can start as pure observability and be tightened category-by-category without touching the upstream model.
 
@@ -97,6 +97,9 @@ All properties are optional; the Rust defaults equal the `gcl.yaml` defaults.
 
 ### reportAll
 `boolean`, default `false`. Attach the `x_output_quality` report to **every** inspected buffered response, not only flagged ones (`action: "monitor"`, `flagged: []` for clean answers). Intended for demos, tuning and client-side dashboards. SSE streams are never rewritten.
+
+### includeWithheldText
+`boolean`, default `false`. **Demo/debug only.** When a response is **blocked**, the report also carries `withheldText` — the original text the policy removed (as extracted, capped at `maxInspectedBytes`). The visible text is still replaced, but anyone reading the raw response can see the original, so this defeats blocking for technical readers: never enable it in production. Has no effect on `monitor`/`annotate` or on SSE streams (which are never rewritten).
 
 ### stripAcceptEncoding
 `boolean`, default `true`. Removes `Accept-Encoding` from the forwarded request so the upstream answers uncompressed. When `false`, compressed responses (`Content-Encoding` other than `identity`) pass through uninspected.

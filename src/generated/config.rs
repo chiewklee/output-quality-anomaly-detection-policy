@@ -25,6 +25,8 @@ pub struct Config {
     pub hallucination_action: Option<String>,
     #[serde(alias = "hallucinationThreshold")]
     pub hallucination_threshold: Option<f64>,
+    #[serde(alias = "includeWithheldText")]
+    pub include_withheld_text: Option<bool>,
     #[serde(alias = "judgeApiKey")]
     pub judge_api_key: Option<String>,
     #[serde(alias = "judgeContextChars")]

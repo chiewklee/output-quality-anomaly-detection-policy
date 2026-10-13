@@ -48,7 +48,7 @@ On top of either checker, a few **structural checks** always run (empty, cut-off
 | | |
 |---|---|
 | Exchange assets | `output-quality-anomaly-detection` (definition) + `output-quality-anomaly-detection-flex` (implementation), group `fa76c43c-f6d0-41fd-bdcd-214ccae74d41` |
-| Current version | **1.2.0** |
+| Current version | **1.3.0** |
 | Applies to | `a2a`, `a2a_v1`, `llm`, `http` instances |
 | Injection point | outbound |
 | Traffic understood | A2A Legacy + v1.0 (JSON-RPC and HTTP+JSON, incl. streaming), OpenAI Chat Completions / Completions / Responses, Anthropic Messages (JSON + SSE) |
@@ -61,6 +61,7 @@ On top of either checker, a few **structural checks** always run (empty, cut-off
 | 1.0.0 | LLM APIs, word lists + OpenAI moderation judge |
 | 1.1.0 | LLM judge (chat completions), A2A support, `reportAll`, asset types `a2a`/`a2a_v1` |
 | 1.2.0 | Outbound injection point |
+| 1.3.0 | `includeWithheldText` (demo/debug): blocked replies also carry the original text in the report |
 
 ## Applying it in Anypoint API Manager
 
@@ -76,6 +77,7 @@ On top of either checker, a few **structural checks** always run (empty, cut-off
 | `biasAction` / `hallucinationAction` / `anomalyAction` | `annotate` | Delivered with a report attached. |
 | `reportAll` | `true` | Clean answers also carry scores (for the demo UI). |
 | `feedbackMinSamples` | `3` | So the feedback anomaly can be shown live. |
+| `includeWithheldText` | `true` (**demo only**) | Blocked replies also carry the original text as `withheldText`, so the demo can show what was blocked. Leave `false` in production. |
 
 Every flagged response carries the `x_output_quality` report and is logged by the gateway (`flagged response_id=… categories=… action=…`). The policy also raises a PDK policy violation, but **as an outbound policy it does not currently appear in Anypoint Monitoring's policy-violation counts** (verified on managed Omni Gateway 1.13.1: 52 requests, 0 violations shown) — use the gateway logs or the report for alerting.
 
@@ -222,6 +224,7 @@ The policy reads only `choices[0].message.content`, parses the JSON object in it
 | **Keep user data away from the judge** | `judgeContextChars: 0` sends only the answer, not the conversation. |
 | **Tune sensitivity** | Raise/lower `hallucinationThreshold`, `toxicityThreshold`, `biasThreshold`, `anomalyThreshold` (0–1). Add domain terms with `toxicityTerms` / `biasGroupTerms` (heuristic fallback only). |
 | **Show scores for every answer** | `reportAll: true` (the demo UI relies on it). |
+| **Show what a block removed (demo)** | `includeWithheldText: true` — the report gets `withheldText`. Anyone reading the raw JSON sees it, so demo/debug only. |
 | **Disable feedback** | `feedbackPath: ""`. Put authentication (client-ID / JWT) in front of the instance if feedback must be trusted. |
 | **Check the judge is really running** | Reports should say `source: "llm"` with a `judgeMs` value. `heuristic` = no `judgeService` saved; `heuristic_fallback` = judge failed (see Troubleshooting). |
 | **Try it without Anypoint** | `PLAYGROUND_PORT=8082 make run` with the demo agent running locally — see [Local playground](#local-playground). |
@@ -231,7 +234,7 @@ The policy reads only `choices[0].message.content`, parses the JSON object in it
 
 ```bash
 make setup                  # cargo-anypoint 1.10.0 + llvm-cov
-cargo test --lib            # 102 unit + pdk-unit end-to-end tests (mocked judge, A2A + LLM)
+cargo test --lib            # 105 unit + pdk-unit end-to-end tests (mocked judge, A2A + LLM)
 make test                   # Docker integration test on Flex Gateway 1.13.0
 make build                  # WASM + GCL
 make release                # publish definition + implementation to Exchange (bump Cargo.toml version first)
@@ -254,8 +257,8 @@ The `backend` container (`playground/mock-llm/server.py`) also serves a mock Ope
 
 | Item | State |
 |---|---|
-| Policy in Exchange | `output-quality-anomaly-detection` 1.0.0 → 1.1.0 → **1.2.0** (outbound) |
-| Tests | 102 unit + pdk-unit tests, Docker integration test, local playground, live CloudHub 2.0 run |
+| Policy in Exchange | `output-quality-anomaly-detection` 1.0.0 → 1.1.0 → 1.2.0 → **1.3.0** (outbound) |
+| Tests | 105 unit + pdk-unit tests, Docker integration test, local playground, live CloudHub 2.0 run |
 | Demo agent | Exchange `output-quality-demo-agent` 1.1.0 (type agent) + `output-quality-demo-agent-app` 1.1.0 (app); CloudHub 2.0 app running, internal endpoint only |
 | Gateway instance | `21226057` on `agent-network-ingress-gw`, outbound policy applied with OpenAI judge |
 | P4A submission | repo public; wizard content ready in [`P4A_SUBMISSION.md`](P4A_SUBMISSION.md) |

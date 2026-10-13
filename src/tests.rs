@@ -109,6 +109,17 @@ mod tests {
         }
 
         #[test]
+        fn test_withheld_text_on_blocked_chat_completion() {
+            let mut t = tester(
+                json!({"toxicityAction": "block", "includeWithheldText": true}),
+                json_backend(chat(TOXIC)),
+            );
+            let body = body_json(&t.request(post_chat()));
+            assert_eq!(body["choices"][0]["message"]["content"], WITHHELD_MESSAGE);
+            assert_eq!(body[REPORT_FIELD]["withheldText"], TOXIC);
+        }
+
+        #[test]
         fn test_annotate_bias() {
             let mut t = tester(
                 json!({"biasAction": "annotate"}),
@@ -599,6 +610,51 @@ mod tests {
             assert_eq!(report["action"], "block");
             assert_eq!(report["flagged"], json!(["toxicity"]));
             assert!(response.violation().is_some());
+        }
+
+        #[test]
+        fn test_withheld_text_is_reported_only_when_enabled() {
+            let mut t = tester(
+                json!({"toxicityAction": "block", "includeWithheldText": true}),
+                json_backend(task(TOXIC)),
+            );
+            let body = body_json(&t.request(send_message("My code does not compile")));
+            assert_eq!(
+                body["result"]["artifacts"][0]["parts"][0]["text"],
+                WITHHELD_MESSAGE
+            );
+            assert_eq!(
+                body["result"]["metadata"][REPORT_FIELD]["withheldText"],
+                TOXIC
+            );
+
+            let mut t = tester(
+                json!({"toxicityAction": "block"}),
+                json_backend(task(TOXIC)),
+            );
+            let body = body_json(&t.request(send_message("My code does not compile")));
+            assert!(
+                body["result"]["metadata"][REPORT_FIELD]
+                    .get("withheldText")
+                    .is_none(),
+                "off by default"
+            );
+        }
+
+        #[test]
+        fn test_withheld_text_not_added_to_annotated_answers() {
+            let mut t = tester(
+                json!({"biasAction": "annotate", "includeWithheldText": true}),
+                json_backend(task("Women are naturally bad at math.")),
+            );
+            let body = body_json(&t.request(send_message("hi")));
+            assert_eq!(
+                body["result"]["metadata"][REPORT_FIELD]["action"],
+                "annotate"
+            );
+            assert!(body["result"]["metadata"][REPORT_FIELD]
+                .get("withheldText")
+                .is_none());
         }
 
         #[test]

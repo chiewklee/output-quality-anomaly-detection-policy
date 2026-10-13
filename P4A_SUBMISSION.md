@@ -68,6 +68,7 @@ All fields are optional; defaults shown.
 | `hallucinationAction` / `toxicityAction` / `biasAction` / `anomalyAction` | `monitor` | `monitor`, `annotate` or `block`. |
 | `hallucinationThreshold` / `toxicityThreshold` / `biasThreshold` / `anomalyThreshold` | `0.6` / `0.5` / `0.5` / `0.7` | Score (0–1) at which a category is flagged. |
 | `reportAll` | `false` | Attach the report to every inspected response, not only flagged ones. |
+| `includeWithheldText` | `false` | Demo/debug only: blocked replies also carry the original text (`withheldText`). Never enable in production. |
 | `feedbackPath` | `/quality-feedback` | Gateway-served feedback endpoint (empty disables). |
 | `feedbackWindowSeconds` / `feedbackMinSamples` / `feedbackNegativeRateThreshold` | `300` / `10` / `0.3` | Negative-feedback anomaly: rate ≥ threshold over ≥ N samples in the window. |
 | `toxicityTerms` / `biasGroupTerms` | `[]` | Extra terms for the heuristic fallback. |

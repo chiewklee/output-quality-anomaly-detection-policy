@@ -54,6 +54,8 @@
   .reasons li { margin-bottom: 6px; }
   .tag { font-weight: 700; color: var(--brand-dark); margin-right: 6px; }
   .via { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
+  .withheld { margin-top: 8px; padding: 8px 10px; border: 1px dashed var(--err); border-radius: 6px; background: #fff; color: var(--muted); font-size: 13px; white-space: pre-wrap; }
+  .withheld .wh-label { display: block; font-size: 12px; font-weight: 700; color: var(--err); margin-bottom: 4px; }
   .reasons-title { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-2); margin: 4px 0 8px; }
   details { margin-top: 16px; font-size: 12px; }
   pre { background: var(--bg); padding: 8px; border-radius: 4px; overflow-x: auto; }
@@ -124,6 +126,13 @@ function renderModes() {
   $("q").value = MODES[0].q;
 }
 
+// Shown only when the policy runs with includeWithheldText (demo/debug): what the block removed.
+function withheldBox(textValue) {
+  const box = el("div", "withheld");
+  box.append(el("span", "wh-label", "⛔ What the agent sent (withheld by the policy; shown because includeWithheldText is on)"), document.createTextNode(textValue));
+  return box;
+}
+
 function verdictBadge(report) {
   if (!report) return { cls: "none", text: "○ Not inspected" };
   if (report.action === "block") return { cls: "err", text: "⛔ Blocked" };
@@ -182,6 +191,9 @@ function renderVerdict(r) {
       v.append(ul);
     }
   }
+  if (report && report.withheldText) {
+    v.append(withheldBox(report.withheldText));
+  }
   const raw = el("details"); raw.append(el("summary", null, "Raw response"), el("pre", null, JSON.stringify(r.raw, null, 2)));
   v.append(raw);
 }
@@ -221,6 +233,7 @@ $("form").onsubmit = async (e) => {
     const task = raw.result && (raw.result.task || raw.result.message || raw.result);
     const r = { raw, task, report: task && task.metadata && task.metadata.x_output_quality, ms: Math.round(performance.now() - started), node: pending };
     pending.textContent = task ? (agentText(task) || "(empty response)") : (raw.error && raw.error.message) || "(no answer)";
+    if (r.report && r.report.withheldText) pending.append(withheldBox(r.report.withheldText));
     const meta = el("div", "meta"), b = verdictBadge(r.report);
     meta.append(el("span", "badge " + b.cls, b.text));
     const fb = el("div", "fb"), up = el("button", null, "👍"), down = el("button", null, "👎");

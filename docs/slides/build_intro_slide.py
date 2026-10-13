@@ -186,7 +186,7 @@ def build(path):
         ("1.1–2.4 s", "LLM verdict per answer"),
         ("4", "risk categories"),
         ("A2A v0.3 & v1.0", "plus OpenAI & Anthropic APIs"),
-        ("102", "automated tests"),
+        ("105", "automated tests"),
     ]
     sw = 12.14 / len(stats)
     for i, (big, small) in enumerate(stats):

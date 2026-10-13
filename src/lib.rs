@@ -287,13 +287,19 @@ async fn inspect_json(
 
     let evaluation = evaluate(&output, context.conversation.as_deref(), policy).await;
     let verdict = &evaluation.verdict;
-    let report = verdict::report(
+    let mut report = verdict::report(
         &evaluation.scores,
         verdict,
         verdict.action,
         evaluation.source,
         evaluation.judge_ms,
     );
+    if verdict.action == Action::Block && settings.include_withheld_text {
+        // Demo/debug only (`includeWithheldText`): expose what was withheld.
+        if let Some(object) = report.as_object_mut() {
+            object.insert("withheldText".to_string(), json!(output.text));
+        }
+    }
     if let Some(new_body) = verdict::rewrite(&body, verdict, report, settings.report_all) {
         if let Err(err) = body_state.handler().set_body(&new_body) {
             logger::error!(

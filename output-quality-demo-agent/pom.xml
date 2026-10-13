@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>fa76c43c-f6d0-41fd-bdcd-214ccae74d41</groupId>
     <artifactId>output-quality-demo-agent</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <packaging>mule-application</packaging>
     <name>output-quality-demo-agent</name>
     <description>Demo chat agent (OpenAI-compatible) with scripted misbehaviour modes, used to demonstrate the Output Quality &amp; Anomaly Detection policy.</description>

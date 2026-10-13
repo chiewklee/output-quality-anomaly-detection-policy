@@ -165,6 +165,10 @@ spec:
       type: boolean
       default: false
       description: Add the x_output_quality report to every inspected JSON response, not only flagged ones (useful for demos and tuning).
+    includeWithheldText:
+      type: boolean
+      default: false
+      description: DEMO/DEBUG ONLY. When a response is blocked, also put the original text in the report (withheldText). Anyone reading the raw response can then see it.
     stripAcceptEncoding:
       type: boolean
       default: true
