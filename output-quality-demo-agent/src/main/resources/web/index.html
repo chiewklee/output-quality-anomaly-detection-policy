@@ -31,6 +31,8 @@
   .fb { margin-left: auto; display: flex; gap: 4px; }
   .fb button { border: 1px solid var(--border); background: #fff; border-radius: 4px; cursor: pointer; padding: 2px 8px; font-size: 13px; }
   .fb button:disabled { opacity: .5; cursor: default; }
+  .preview { grid-column: 1 / -1; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
+  .preview .pv-label { display: block; font-size: 11px; font-weight: 700; color: var(--text-2); margin-bottom: 3px; }
   form { border-top: 1px solid var(--border); padding: 12px 16px; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
   .modes { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
   .modes label { font-size: 12px; border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; cursor: pointer; color: var(--text-2); }
@@ -77,6 +79,7 @@
     <div id="chat"></div>
     <form id="form">
       <div class="modes" id="modes"></div>
+      <div class="preview" id="preview"></div>
       <textarea id="q" placeholder="Ask the agent something…"></textarea>
       <button class="send" id="send" type="submit">Send</button>
     </form>
@@ -119,7 +122,7 @@ function renderModes() {
   MODES.forEach((m, i) => {
     const label = el("label");
     const input = el("input"); input.type = "radio"; input.name = "mode"; input.value = m.id; input.checked = i === 0;
-    input.onchange = () => { $("q").value = m.q; };
+    input.onchange = () => { $("q").value = m.q; renderPreview(m.id); };
     label.append(input, el("span", null, m.label));
     $("modes").append(label);
   });
@@ -255,7 +258,26 @@ async function checkPath() {
     $("path").textContent = res.status === 405 ? "✓ Via Omni Gateway (policy active)" : "⚠ Direct to agent (no policy)";
   } catch { $("path").textContent = "Route unknown"; }
 }
-renderModes(); checkPath();
+// Scripted answers come from the agent itself (GET demo-answers → dw::demo_modes), so the preview
+// always matches what the agent will send.
+let SCRIPTED = {};
+function renderPreview(mode) {
+  const p = $("preview"); p.replaceChildren();
+  if (mode === "normal") {
+    p.append(el("span", "pv-label", "Real model"), document.createTextNode("Not scripted — the agent asks OpenAI gpt-5.4-mini and the policy judges the real answer."));
+    return;
+  }
+  const text = SCRIPTED[mode];
+  p.append(el("span", "pv-label", "Scripted answer the agent will send (simulated misbehaviour)"),
+           document.createTextNode(text == null ? "(loading…)" : (text || "(empty answer)")));
+}
+fetch("demo-answers").then((r) => r.json()).then((a) => {
+  SCRIPTED = a;
+  const sel = document.querySelector("input[name=mode]:checked");
+  if (sel) renderPreview(sel.value);
+}).catch(() => { SCRIPTED = {}; });
+
+renderModes(); checkPath(); renderPreview("normal");
 // Deep link for presenting: ?autorun=<mode> selects the mode and sends its suggested question.
 const autorun = new URLSearchParams(location.search).get("autorun");
 if (autorun) {

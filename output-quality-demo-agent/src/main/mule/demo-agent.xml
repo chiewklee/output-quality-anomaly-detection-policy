@@ -82,6 +82,27 @@ output application/json
         </ee:transform>
     </flow>
 
+    <!-- Scripted answers for the UI preview. Plain JSON (not an A2A or LLM shape), so the policy
+         passes it through unscored. Single source of truth: dw::demo_modes. -->
+    <flow name="demo-answers-flow" doc:name="Demo answers"
+          doc:description="Returns the scripted answer for each demo mode so the UI can preview it before sending">
+        <http:listener config-ref="api-listener" path="/demo-answers" allowedMethods="GET"
+                       doc:name="GET /demo-answers" doc:description="Serves the scripted demo answers as JSON">
+            <http:response>
+                <http:headers>#[{'content-type': 'application/json', 'cache-control': 'no-store'}]</http:headers>
+            </http:response>
+        </http:listener>
+        <ee:transform doc:name="Scripted answers" doc:description="Reads the answers map from the dw::demo_modes module">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+import * from dw::demo_modes
+output application/json
+---
+answers]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
     <!-- One task per message: pick a scripted or real-model answer, publish it as the task's
          artifact, then complete the task (the connector returns the Task to the caller). -->
     <flow name="a2a-task-flow">

@@ -72,6 +72,7 @@ With the public endpoint removed, show "before" by **disabling** the outbound po
 - **Mode selection** travels in the A2A message metadata: `metadata.demo_mode` = `normal` | `bias` | `toxic` | `hallucinate` | `quoted` | `offtopic` | `leak` | `loop` | `empty`. Optional `metadata.answer_source: "model"` sends a scripted mode to the real model with a provoking system prompt instead (`src/main/resources/dw/demo_modes.dwl`) — real models mostly refuse, which is itself a useful "no false positives" demo.
 - **UI** (`src/main/resources/web/index.html`) is served at `/` by the same app, so the browser calls the agent through the gateway without CORS. It sends `SendMessage` to `quality-demo-agent/jsonrpc` and reads the report from `result.task.metadata.x_output_quality`. The header checks `GET quality-feedback` (405 ⇒ policy active).
 - **Health**: `GET /health` → `{status, model, openaiConfigured, agentPath}`.
+- **Scripted-answer preview**: `GET /demo-answers` returns the scripted answer per mode straight from `dw::demo_modes`; the UI shows it greyed above the input when a mode is selected, so the audience sees what the agent will send before it's judged. Plain JSON, so the policy passes it through unscored.
 
 | Property | Default | Purpose |
 |---|---|---|
